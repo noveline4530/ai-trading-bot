@@ -334,7 +334,7 @@ def get_current_base64_image():
     finally:
         # Close the browser
         driver.quit()
-        return chart
+        return chart_image
 
 def get_instructions(file_path):
     try:
