@@ -265,18 +265,19 @@ def get_current_base64_image():
         # chrome_options.add_argument("--disable-dev-shm-usage")
         # chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
-        # # Initialize the WebDriver with the specified options
+        # Initialize the WebDriver with the specified options
         # logger.info("ChromeDriver 설정 중...")
         # service = Service(ChromeDriverManager().install())
-        # driver = webdriver.Chrome(service=service, options=chrome_options)
 
         # AWS EC2 서버용 셋팅
         logger.info("ChromeDriver 설정 중...")
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # 헤드리스 모드 사용
+        chrome_options.add_argument("--start-maximized")
+        chrome_options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
+        chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
         service = Service('/usr/bin/chromedriver')  # Specify the path to the ChromeDriver executable
 
@@ -358,12 +359,12 @@ def analyze_data_with_gpt4(data_json, last_decisions, fear_and_greed, current_st
                 {"role": "user", "content": last_decisions},
                 {"role": "user", "content": fear_and_greed},
                 {"role": "user", "content": current_status},
-                {"role": "user", "content": {
+                {"role": "user", "content": [{
                         "type": "image_url",
                         "image_url": {
                             "url": f"data:image/png;base64,{current_base64_image}"
                         }
-                    }}
+                    }]}
             ],
             response_format={"type":"json_object"}
         )
