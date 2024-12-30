@@ -221,8 +221,44 @@ def fetch_fear_and_greed_index(limit=1, date_format=''):
         resStr += str(data)
     return resStr
 
+def capture_and_encode_screenshot(driver):
+    try:
+        # 스크린샷 캡처
+        png = driver.get_screenshot_as_png()
+        
+        # PIL Image로 변환
+        img = Image.open(io.BytesIO(png))
+        
+        # 이미지 리사이즈 (OpenAI API 제한에 맞춤)
+        img.thumbnail((2000, 2000))
+        
+        # 현재 시간을 파일명에 포함
+        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"upbit_chart_{current_time}.png"
+        
+        # 현재 스크립트의 경로를 가져옴
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # 파일 저장 경로 설정
+        file_path = os.path.join(script_dir, filename)
+        
+        # 이미지 파일로 저장
+        img.save(file_path)
+        logger.info(f"스크린샷이 저장되었습니다: {file_path}")
+        
+        # 이미지를 바이트로 변환
+        buffered = io.BytesIO()
+        img.save(buffered, format="PNG")
+        
+        # base64로 인코딩
+        base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        
+        return base64_image, file_path
+    except Exception as e:
+        logger.error(f"스크린샷 캡처 및 인코딩 중 오류 발생: {e}")
+        return None, None
+
 def get_current_base64_image():
-    screenshot_path = "chart_screenshot.png"
     try:
         # 로컬용 셋팅 - Set up Chrome options for headless mode
         # chrome_options = Options()
@@ -239,6 +275,7 @@ def get_current_base64_image():
         # driver = webdriver.Chrome(service=service, options=chrome_options)
 
         # AWS EC2 서버용 셋팅
+        logger.info("ChromeDriver 설정 중...")
         chrome_options = Options()
         chrome_options.add_argument("--headless")  # 헤드리스 모드 사용
         chrome_options.add_argument("--no-sandbox")
@@ -252,7 +289,9 @@ def get_current_base64_image():
 
         # Navigate to the desired webpage
         driver.get("https://upbit.com/full_chart?code=CRIX.UPBIT.KRW-BTC")
+        logger.info("페이지 로드 완료")
 
+        logger.info("차트 작업 시작")
         # Wait for the page to load completely
         wait = WebDriverWait(driver, 10)  # 10 seconds timeout
 
@@ -284,17 +323,18 @@ def get_current_base64_image():
         # Wait for the "MACD" indicator to be clickable and click it
         macd_indicator = wait.until(EC.element_to_be_clickable((By.XPATH, "//cq-item[translate[@original='MACD']]")))
         macd_indicator.click()
+        logger.info("차트 작업 완료")
 
         # Take a screenshot to verify the actions
-        driver.save_screenshot(screenshot_path)
+        chart_image, saved_file_path = capture_and_encode_screenshot(driver)
+        logger.info(f"스크린샷 캡처 완료. 저장된 파일 경로: {saved_file_path}")
     except Exception as e:
-        print("Error making current chart image: {e}")
+        logger.error("Error making current chart image: {e}")
         return ""
     finally:
         # Close the browser
         driver.quit()
-        with open(screenshot_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
+        return chart
 
 def get_instructions(file_path):
     try:
@@ -302,16 +342,16 @@ def get_instructions(file_path):
             instructions = file.read()
         return instructions
     except FileNotFoundError:
-        print("File not found.")
+        logger.error("File not found.")
     except Exception as e:
-        print("An error occurred while reading the file:", e)
+        logger.error("An error occurred while reading the file:", e)
 
 def analyze_data_with_gpt4(data_json, last_decisions, fear_and_greed, current_status, current_base64_image):
     instructions_path = "instructions_sj_v1.md"
     try:
         instructions = get_instructions(instructions_path)
         if not instructions:
-            print("No instructions found.")
+            logger.info("No instructions found.")
             return None
         
         response = client.chat.completions.create(
@@ -322,42 +362,47 @@ def analyze_data_with_gpt4(data_json, last_decisions, fear_and_greed, current_st
                 {"role": "user", "content": last_decisions},
                 {"role": "user", "content": fear_and_greed},
                 {"role": "user", "content": current_status},
-                {"role": "user", "content": [{"type": "image_url","image_url": {"url": f"data:image/jpeg;base64,{current_base64_image}"}}]}
+                {"role": "user", "content": {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{current_base64_image}"
+                        }
+                    }}
             ],
             response_format={"type":"json_object"}
         )
         advice = response.choices[0].message.content
-        print(advice)
+        logger.info(f"##AI Result: {advice}")
         return advice
     except Exception as e:
-        print(f"Error in analyzing data with GPT-4: {e}")
+        logger.error(f"Error in analyzing data with GPT-4: {e}")
         return None
 
 def execute_buy(percentage):
-    print("Attempting to buy BTC with a percentage of KRW balance...")
+    logger.info("Attempting to buy BTC with a percentage of KRW balance...")
     try:
         krw_balance = upbit.get_balance("KRW")
         amount_to_invest = krw_balance * (percentage / 100)
         if amount_to_invest > 5000:  # Ensure the order is above the minimum threshold
             result = upbit.buy_market_order("KRW-BTC", amount_to_invest * 0.9995)  # Adjust for fees
-            print("Buy order successful:", result)
+            logger.info("Buy order successful:", result)
     except Exception as e:
-        print(f"Failed to execute buy order: {e}")
+        logger.error(f"Failed to execute buy order: {e}")
 
 def execute_sell(percentage):
-    print("Attempting to sell a percentage of BTC...")
+    logger.info("Attempting to sell a percentage of BTC...")
     try:
         btc_balance = upbit.get_balance("BTC")
         amount_to_sell = btc_balance * (percentage / 100)
         current_price = pyupbit.get_orderbook(ticker="KRW-BTC")['orderbook_units'][0]["ask_price"]
         if current_price * amount_to_sell > 5000:  # Ensure the order is above the minimum threshold
             result = upbit.sell_market_order("KRW-BTC", amount_to_sell)
-            print("Sell order successful:", result)
+            logger.info("Sell order successful:", result)
     except Exception as e:
-        print(f"Failed to execute sell order: {e}")
+        logger.error(f"Failed to execute sell order: {e}")
 
 def make_decision_and_execute():
-    print("Making decision and executing...")
+    logger.info("Making decision and executing...")
     try:
         data_json = fetch_and_prepare_data()
         last_decisions = fetch_last_decisions()
@@ -365,7 +410,7 @@ def make_decision_and_execute():
         current_status = get_current_status()
         current_base64_image = get_current_base64_image()
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
     else:
         max_retries = 5
         retry_delay_seconds = 5
@@ -376,11 +421,11 @@ def make_decision_and_execute():
                 decision = json.loads(advice)
                 break
             except Exception as e:
-                print(f"JSON parsing failed: {e}. Retrying in {retry_delay_seconds} seconds...")
+                logger.error(f"JSON parsing failed: {e}. Retrying in {retry_delay_seconds} seconds...")
                 time.sleep(retry_delay_seconds)
-                print(f"Attempt {attempt + 2} of {max_retries}")
+                logger.error(f"Attempt {attempt + 2} of {max_retries}")
         if not decision:
-            print("Failed to make a decision after maximum retries.")
+            logger.error("Failed to make a decision after maximum retries.")
             return
         else:
             try:
@@ -393,7 +438,7 @@ def make_decision_and_execute():
                 
                 save_decision_to_db(decision, current_status)
             except Exception as e:
-                print(f"Failed to execute the decision or save to DB: {e}")
+                logger.error(f"Failed to execute the decision or save to DB: {e}")
 
 if __name__ == "__main__":
     initialize_db()
