@@ -224,18 +224,30 @@ def fetch_fear_and_greed_index(limit=1, date_format=''):
 def get_current_base64_image():
     screenshot_path = "chart_screenshot.png"
     try:
-        # Set up Chrome options for headless mode
+        # 로컬용 셋팅 - Set up Chrome options for headless mode
+        # chrome_options = Options()
+        # chrome_options.add_argument("--start-maximized")
+        # chrome_options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
+        # chrome_options.add_argument("--disable-gpu")
+        # chrome_options.add_argument("--no-sandbox")
+        # chrome_options.add_argument("--disable-dev-shm-usage")
+        # chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
+        # # Initialize the WebDriver with the specified options
+        # logger.info("ChromeDriver 설정 중...")
+        # service = Service(ChromeDriverManager().install())
+        # driver = webdriver.Chrome(service=service, options=chrome_options)
+
+        # AWS EC2 서버용 셋팅
         chrome_options = Options()
-        chrome_options.add_argument("--start-maximized")
-        chrome_options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
-        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--headless")  # 헤드리스 모드 사용
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+        chrome_options.add_argument("--disable-gpu")
+
+        service = Service('/usr/bin/chromedriver')  # Specify the path to the ChromeDriver executable
 
         # Initialize the WebDriver with the specified options
-        logger.info("ChromeDriver 설정 중...")
-        service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
 
         # Navigate to the desired webpage
@@ -385,9 +397,7 @@ def make_decision_and_execute():
 
 if __name__ == "__main__":
     initialize_db()
-
-    # testing
-    # schedule.every().minute.do(make_decision_and_execute)
+    make_decision_and_execute()
 
     # Schedule the task to run at 00:01
     schedule.every().day.at("00:01").do(make_decision_and_execute)
