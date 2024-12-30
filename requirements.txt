@@ -1,0 +1,15 @@
+python-dotenv
+openai
+pyupbit
+pyjwt
+pandas
+pandas_ta
+schedule
+streamlit
+selenium
+webdriver-manager
+Pillow
+ta
+git+https://github.com/twopirllc/pandas-ta
+streamlit
+plotly
