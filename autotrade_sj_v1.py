@@ -50,6 +50,7 @@ def initialize_db(db_path='trading_decisions.sqlite'):
                 btc_balance REAL,
                 krw_balance REAL,
                 btc_avg_buy_price REAL,
+                btc_krw_price REAL,
                 btc_krw_balance REAL,
                 total_krw_balance REAL
             );
@@ -73,23 +74,26 @@ def save_decision_to_db(decision, current_status):
             status_dict.get('btc_balance'),
             status_dict.get('krw_balance'),
             status_dict.get('btc_avg_buy_price'),
+            status_dict.get('btc_krw_price'),
             status_dict.get('btc_krw_balance'),
             status_dict.get('total_krw_balance')
         )
         
         # Inserting data into the database
         cursor.execute('''
-            INSERT INTO decisions (timestamp, decision, percentage, reason, btc_balance, krw_balance, btc_avg_buy_price, btc_krw_balance, total_krw_balance)
-            VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO decisions (timestamp, decision, percentage, reason, btc_balance, krw_balance, btc_avg_buy_price, btc_krw_price, btc_krw_balance, total_krw_balance)
+            VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', data_to_insert)
     
         conn.commit()
 
 def fetch_last_decisions(db_path='trading_decisions.sqlite', num_decisions=10):
+    logger.info("Fetch late decisions data...")
+
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT timestamp, decision, percentage, reason, btc_balance, krw_balance, btc_avg_buy_price, btc_krw_balance, total_krw_balance FROM decisions
+            SELECT timestamp, decision, percentage, reason, btc_balance, krw_balance, btc_avg_buy_price, btc_krw_price, btc_krw_balance, total_krw_balance FROM decisions
             ORDER BY timestamp DESC
             LIMIT ?
         ''', (num_decisions,))
@@ -110,8 +114,9 @@ def fetch_last_decisions(db_path='trading_decisions.sqlite', num_decisions=10):
                     "btc_balance": decision[4],
                     "krw_balance": decision[5],
                     "btc_avg_buy_price": decision[6],
-                    "btc_krw_balance": decision[7],
-                    "total_krw_balance": decision[8]
+                    "btc_krw_price": decision[7],
+                    "btc_krw_balance": decision[8],
+                    "total_krw_balance": decision[9]
                 }
                 formatted_decisions.append(str(formatted_decision))
             return "\n".join(formatted_decisions)
@@ -119,35 +124,40 @@ def fetch_last_decisions(db_path='trading_decisions.sqlite', num_decisions=10):
             return "No decisions found."
 
 def get_current_status():
+    logger.info("Fetch current status data...")
+    
     orderbook = pyupbit.get_orderbook(ticker="KRW-BTC")
     current_time = orderbook['timestamp']
     btc_balance = 0
     krw_balance = 0
     total_krw_balance = 0
     btc_avg_buy_price = 0
+    btc_krw_price = pyupbit.get_current_price("KRW-BTC")
     btc_krw_balance = 0
     balances = upbit.get_balances()
     for b in balances:
         if b['currency'] == "BTC":
             btc_balance = float(b['balance'])
             btc_avg_buy_price = float(b['avg_buy_price'])
-            btc_krw_balance = int(btc_balance * btc_avg_buy_price)
+            btc_krw_balance = int(btc_balance * btc_krw_price)
         if b['currency'] == "KRW":
             krw_balance = int(float(b['balance']))
-    total_krw_balance = int(float(krw_balance + btc_krw_balance))
+    total_krw_balance = krw_balance + btc_krw_balance
     current_status = {
         'current_time': current_time,
         'orderbook': orderbook,
         'btc_balance': btc_balance,
         'krw_balance': krw_balance, 
         'btc_avg_buy_price': btc_avg_buy_price,
+        'btc_krw_price': btc_krw_price,
         'btc_krw_balance': btc_krw_balance,
         'total_krw_balance': total_krw_balance
     }
     return json.dumps(current_status)
 
-
 def fetch_and_prepare_data():
+    logger.info("Fetch and prepare data...")
+
     # Fetch data
     df_daily = pyupbit.get_ohlcv("KRW-BTC", "day", count=30)
     df_hourly = pyupbit.get_ohlcv("KRW-BTC", interval="minute60", count=24)
@@ -204,6 +214,7 @@ def fetch_fear_and_greed_index(limit=1, date_format=''):
     Returns:
     - dict or str: The Fear and Greed Index data in the specified format.
     """
+    logger.info("Fetch fear and greed data...")
     base_url = "https://api.alternative.me/fng/"
     params = {
         'limit': limit,
@@ -241,21 +252,11 @@ def capture_and_encode_screenshot(driver):
         return None
 
 def get_current_base64_image():
+    logger.info("Fetch current chart image data...")
+
+    env = os.getenv("ENVIRONMENT")
     try:
-        # 로컬용 셋팅 - Set up Chrome options for headless mode
-        # chrome_options = Options()
-        # chrome_options.add_argument("--start-maximized")
-        # chrome_options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
-        # chrome_options.add_argument("--disable-gpu")
-        # chrome_options.add_argument("--no-sandbox")
-        # chrome_options.add_argument("--disable-dev-shm-usage")
-        # chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
-
-        # Initialize the WebDriver with the specified options
-        # logger.info("ChromeDriver 설정 중...")
-        # service = Service(ChromeDriverManager().install())
-
-        # AWS EC2 서버용 셋팅
+        # 로컬용 / Ec2용 셋팅 - Set up Chrome options for headless mode
         logger.info("ChromeDriver 설정 중...")
         chrome_options = Options()
         chrome_options.add_argument("--start-maximized")
@@ -263,9 +264,14 @@ def get_current_base64_image():
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
-        service = Service('/usr/bin/chromedriver')  # Specify the path to the ChromeDriver executable
+        if env == "local":
+            chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+            service = Service(ChromeDriverManager().install())
+        elif env == "ec2":
+            service = Service('/usr/bin/chromedriver')
+        else:
+            raise ValueError(f"Unsupported environment. Only local or ec2: {env}")
 
         # Initialize the WebDriver with the specified options
         driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -432,10 +438,13 @@ if __name__ == "__main__":
     schedule.every().day.at("00:01").do(make_decision_and_execute)
 
     # Schedule the task to run at 04:01
-    schedule.every().day.at("08:01").do(make_decision_and_execute)
+    schedule.every().day.at("06:01").do(make_decision_and_execute)
 
     # Schedule the task to run at 16:01
-    schedule.every().day.at("16:01").do(make_decision_and_execute)
+    schedule.every().day.at("12:01").do(make_decision_and_execute)
+
+        # Schedule the task to run at 16:01
+    schedule.every().day.at("18:01").do(make_decision_and_execute)
 
     while True:
         schedule.run_pending()

@@ -31,6 +31,11 @@ def calculate_profit(initial_balance: int, current_balance: int) -> float:
 
 # 메인 함수
 def main():
+    st.set_page_config(
+        page_title="AI Trading Bot",
+        page_icon="💰",
+        layout="wide",  # 레이아웃 설정 ("centered" 또는 "wide")
+    )
     st.title('AI Bitcoin Trading Bot (SJ ver.)')
 
     # 데이터 로드
@@ -56,8 +61,8 @@ def main():
     st.plotly_chart(fig)
 
     # BTC 잔액 변화
-    st.header('보유 BTC 수량 변화')
-    fig = px.line(df, x='timestamp', y='btc_balance', title='BTC Balance')
+    st.header('보유 BTC 잔액 변화')
+    fig = px.line(df, x='timestamp', y='btc_krw_balance', title='BTC Balance')
     st.plotly_chart(fig)
 
     # KRW 잔액 변화

@@ -22,7 +22,7 @@ Example structure for JSON Data 2 (Market Analysis Data) is as follows:
 ### Data 2: Previous Decisions
 - **Purpose**: This section details the insights gleaned from the most recent trading decisions undertaken by the system. It serves to provide a historical backdrop that is instrumental in refining and honing future trading strategies. Incorporate a structured evaluation of past decisions against OHLCV data to systematically assess their effectiveness.
 - **Contents**: 
-    - Each record within `last_decisions` chronicles a distinct trading decision, encapsulating the decision's timing (`timestamp`), the action executed (`decision`), the proportion of the portfolio it impacted (`percentage`), the reasoning underpinning the decision (`reason`), and the portfolio's condition at the decision's moment (`btc_balance`, `krw_balance`, `btc_avg_buy_price`, `btc_krw_balance`, `total_krw_balance`).
+    - Each record within `last_decisions` chronicles a distinct trading decision, encapsulating the decision's timing (`timestamp`), the action executed (`decision`), the proportion of the portfolio it impacted (`percentage`), the reasoning underpinning the decision (`reason`), and the portfolio's condition at the decision's moment (`btc_balance`, `krw_balance`, `btc_avg_buy_price`, `btc_krw_price`, `btc_krw_balance`, `total_krw_balance`).
         - `timestamp`: Marks the exact moment the decision was recorded, expressed in milliseconds since the Unix epoch, to furnish a chronological context.
         - `decision`: Clarifies the action taken—`buy`, `sell`, or `hold`—thus indicating the trading move made based on the analysis.
         - `percentage`: Denotes the fraction of the portfolio allocated for the decision, mirroring the level of investment in the trading action.
@@ -30,6 +30,7 @@ Example structure for JSON Data 2 (Market Analysis Data) is as follows:
         - `btc_balance`: Reveals the quantity of Bitcoin within the portfolio at the decision's time, demonstrating the portfolio's market exposure.
         - `krw_balance`: Indicates the amount of Korean Won available for trading at the time of the decision, signaling liquidity.
         - `btc_avg_buy_price`: Provides the average acquisition cost of the Bitcoin holdings, serving as a metric for evaluating the past decisions' performance and the prospective future profitability.
+        - `btc_krw_price`: Represents the price of Bitcoin in Korean Won (KRW) at the time of the transaction, reflecting the value of one Bitcoin during the trade.
         - `btc_krw_balance`: Represents the Korean Won equivalent value of the Bitcoin holdings, reflecting the market value of the Bitcoin in the portfolio.
         - `total_krw_balance`: The sum of the Korean Won balance (krw_balance) and the Bitcoin’s Korean Won equivalent value (btc_krw_balance), representing the total asset value of the portfolio in Korean Won terms.
 
@@ -51,6 +52,7 @@ Example structure for JSON Data 2 (Market Analysis Data) is as follows:
     - `btc_balance`: The amount of Bitcoin currently held.
     - `krw_balance`: The amount of Korean Won available for trading.
     - `btc_avg_buy_price`: The average price at which the held Bitcoin was purchased.
+    - `btc_krw_price`: The price of one Bitcoin in Korean Won (KRW) based on the current market. This value fluctuates in real-time and is determined by the market value of Bitcoin and the order book status on the exchange.
     - `btc_krw_balance`: The Korean Won equivalent value of the Bitcoin holdings, reflecting the current market value of the Bitcoin in the portfolio.
 	- `total_krw_balance`: The sum of the Korean Won balance (krw_balance) and the Bitcoin’s Korean Won equivalent value (btc_krw_balance), representing the total asset value of the portfolio in Korean Won terms.
 Example structure for JSON Data (Current Investment State) is as follows:
@@ -81,6 +83,7 @@ Example structure for JSON Data (Current Investment State) is as follows:
     "btc_balance": "<amount of Bitcoin currently held>",
     "krw_balance": "<amount of Korean Won available for trading>",
     "btc_avg_buy_price": "<average price in KRW at which the held Bitcoin was purchased>",
+    "btc_krw_price": "<The price of one Bitcoin in Korean Won (KRW) based on the current market>",
     "btc_krw_balance": "<Korean Won equivalent value of the Bitcoin holdings, reflecting the current market value of Bitcoin>",
     "total_krw_balance": "<sum of the Korean Won balance (krw_balance) and the Bitcoin's Korean Won equivalent value (btc_krw_balance), representing the total asset value in Korean Won terms>"
 }
