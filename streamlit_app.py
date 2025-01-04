@@ -29,10 +29,37 @@ def calculate_profit(initial_balance: int, current_balance: int) -> float:
     return_rate = ((current_balance - initial_balance) / initial_balance) * 100
     return f"{return_rate:.2f}"
 
+# Updated function to create styled line charts without markers
+def create_styled_line_chart_without_markers(df, x_col, y_col, title):
+    """
+    Creates a styled line chart without markers.
+    :param df: DataFrame containing the data.
+    :param x_col: Column name for the x-axis.
+    :param y_col: Column name for the y-axis.
+    :param title: Title of the chart.
+    :return: Plotly figure object.
+    """
+    fig = px.line(
+        df,
+        x=x_col,
+        y=y_col,
+        title=title,
+        template="plotly_white",
+        labels={x_col: "Timestamp", y_col: "Value (KRW)"},
+    )
+    fig.update_traces(line=dict(width=2))
+    fig.update_layout(
+        title=dict(font=dict(size=20, color="#333"), x=0.5),
+        xaxis=dict(title=dict(font=dict(size=14)), tickangle=-45),
+        yaxis=dict(title=dict(font=dict(size=14))),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+    )
+    return fig
+
 # 메인 함수
 def main():
     st.set_page_config(
-        page_title="AI Trading Bot",
+        page_title="SJ's AI Trading Bot",
         page_icon="💰",
         layout="wide",  # 레이아웃 설정 ("centered" 또는 "wide")
     )
@@ -62,18 +89,18 @@ def main():
 
     # BTC 잔액 변화
     st.header('보유 BTC 잔액 변화')
-    fig = px.line(df, x='timestamp', y='btc_krw_balance', title='BTC Balance')
-    st.plotly_chart(fig)
+    btc_balance_fig = create_styled_line_chart_without_markers(df, x_col='timestamp', y_col='btc_krw_balance', title='BTC KRW Balance')
+    st.plotly_chart(btc_balance_fig)
 
     # KRW 잔액 변화
     st.header('보유 KRW 잔액 변화')
-    fig = px.line(df, x='timestamp', y='krw_balance', title='KRW Balance')
-    st.plotly_chart(fig)
+    krw_balance_fig = create_styled_line_chart_without_markers(df, x_col='timestamp', y_col='krw_balance', title='KRW Balance')
+    st.plotly_chart(krw_balance_fig)
 
     # 총 보유 잔액 변화
     st.header('총 보유 잔액 변화')
-    fig = px.line(df, x='timestamp', y='total_krw_balance', title='BTC Price (KRW)')
-    st.plotly_chart(fig)
+    total_balance_fig = create_styled_line_chart_without_markers(df, x_col='timestamp', y_col='total_krw_balance', title='Total Balance')
+    st.plotly_chart(total_balance_fig)
 
 if __name__ == "__main__":
     main()

@@ -7,6 +7,7 @@ import pandas_ta as ta
 from pydantic import BaseModel
 import json
 from openai import OpenAI
+from tavily import TavilyClient
 import schedule
 import time
 import requests
@@ -24,6 +25,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, WebDriverException, NoSuchElementException
 import logging
 import base64
+
 
 
 # Setup
@@ -319,12 +321,57 @@ def get_current_base64_image():
         chart_image = capture_and_encode_screenshot(driver)
         logger.info(f"스크린샷 캡처 완료.")
     except Exception as e:
-        logger.error("Error making current chart image: {e}")
+        logger.error(f"현재 차트 이미지 생성 중 오류 발생: {e}")
         return ""
     finally:
         # Close the browser
         driver.quit()
         return chart_image
+
+def fetch_bitcoin_news():
+    """
+    Tavily API를 사용해 최근 7일간의 영어 비트코인 뉴스를 검색하여 반환합니다.
+    
+    Returns:
+        list: 기사 제목, 내용, 게시 날짜가 포함된 딕셔너리의 리스트
+    """
+    logger.info("Fetch Bitcoin news data...")
+
+    # Tavily API 클라이언트 설정
+    api_key = os.getenv("TAVILY_API_KEY")  # 환경 변수에서 API 키 가져오기
+    client = TavilyClient(api_key=api_key)
+
+    result = "No news data available."
+
+    # 검색 옵션 설정
+    query = "bitcoin"
+    search_options = {
+        "topic": "news",        # 뉴스 주제
+        "days": 7,              # 최근 7일간 검색
+        "max_results": 30,      # 최대 10개의 결과
+        "language": "en",       # 영어 기사
+        "sort": "date_desc",    # 날짜 내림차순 (최근 날짜 순)
+        "include_raw_content": True  # 기사 내용 포함
+    }
+    
+    try:
+        # Tavily API 호출
+        response = client.search(query, **search_options)
+
+        # 결과 데이터 정리
+        articles = []
+        for result in response.get("results", []):
+            articles.append({
+                "title": result.get("title"),
+                "source": result.get("url").split('/')[2],  # URL에서 출처 추출
+                "published_date": result.get("published_date")
+            })
+
+        result = str(articles)
+    except Exception as e:
+        logger.error(f"Error fetching Bitcoin news: {e}")
+
+    return result    
 
 def get_instructions(file_path):
     try:
@@ -336,7 +383,7 @@ def get_instructions(file_path):
     except Exception as e:
         logger.error("An error occurred while reading the file:", e)
 
-def analyze_data_with_gpt4(data_json, last_decisions, fear_and_greed, current_status, current_base64_image):
+def analyze_data_with_gpt4(data_json, last_decisions, bitcoin_news, fear_and_greed, current_status, current_base64_image):
     instructions_path = "instructions_sj_v1.md"
     try:
         instructions = get_instructions(instructions_path)
@@ -350,6 +397,7 @@ def analyze_data_with_gpt4(data_json, last_decisions, fear_and_greed, current_st
                 {"role": "system", "content": instructions},
                 {"role": "user", "content": data_json},
                 {"role": "user", "content": last_decisions},
+                {"role": "user", "content": bitcoin_news},
                 {"role": "user", "content": fear_and_greed},
                 {"role": "user", "content": current_status},
                 {"role": "user", "content": [{
@@ -374,8 +422,10 @@ def execute_buy(percentage):
         krw_balance = upbit.get_balance("KRW")
         amount_to_invest = krw_balance * (percentage / 100)
         if amount_to_invest > 5000:  # Ensure the order is above the minimum threshold
-            result = upbit.buy_market_order("KRW-BTC", amount_to_invest * 0.9995)  # Adjust for fees
-            logger.info(" ## Buy order successful:", result)
+            upbit.buy_market_order("KRW-BTC", amount_to_invest * 0.9995)  # Adjust for fees
+            logger.info(f" ## Buy order successful.")
+        else:
+            logger.info(" ## Buy amount is lower than 5000 won.")
     except Exception as e:
         logger.error(f"Failed to execute buy order: {e}")
 
@@ -386,16 +436,21 @@ def execute_sell(percentage):
         amount_to_sell = btc_balance * (percentage / 100)
         current_price = pyupbit.get_orderbook(ticker="KRW-BTC")['orderbook_units'][0]["ask_price"]
         if current_price * amount_to_sell > 5000:  # Ensure the order is above the minimum threshold
-            result = upbit.sell_market_order("KRW-BTC", amount_to_sell)
-            logger.info(" ## Sell order successful:", result)
+            upbit.sell_market_order("KRW-BTC", amount_to_sell)
+            logger.info(f" ## Sell order successful.")
+        else:
+            logger.info(" ## Sell amount is lower than 5000 won.")
     except Exception as e:
         logger.error(f"Failed to execute sell order: {e}")
+    except Exception as e:
+        logger.error(f"Failed to execute buy order: {e}")
 
 def make_decision_and_execute():
     logger.info("Making decision and executing...")
     try:
         data_json = fetch_and_prepare_data()
         last_decisions = fetch_last_decisions()
+        bitcoin_news = fetch_bitcoin_news()
         fear_and_greed = fetch_fear_and_greed_index(limit=30)
         current_status = get_current_status()
         current_base64_image = get_current_base64_image()
@@ -407,7 +462,7 @@ def make_decision_and_execute():
         decision = None
         for attempt in range(max_retries):
             try:
-                advice = analyze_data_with_gpt4(data_json, last_decisions, fear_and_greed, current_status, current_base64_image)
+                advice = analyze_data_with_gpt4(data_json, last_decisions, bitcoin_news, fear_and_greed, current_status, current_base64_image)
                 decision = json.loads(advice)
                 break
             except Exception as e:
@@ -432,6 +487,7 @@ def make_decision_and_execute():
 
 if __name__ == "__main__":
     initialize_db()
+    # test
     make_decision_and_execute()
 
     # Schedule the task to run at 00:01

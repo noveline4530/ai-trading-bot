@@ -14,3 +14,4 @@ git+https://github.com/twopirllc/pandas-ta
 streamlit
 plotly
 setuptools
+tavily-python
