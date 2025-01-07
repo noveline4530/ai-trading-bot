@@ -63,7 +63,7 @@ Example structure for JSON Data 1 (Market Analysis Data) is as follows:
     3. **Recommendations**: Practical steps to enhance future trading decisions.  
     4. **Patterns Observed**: Notable trends or behaviors extracted from the data.  
 
-### Data 3: Cryptocurrency News  
+### Data 3: Cryptocurrency News
 - **Purpose**:  
   Utilize news data from the past 7 days to analyze market sentiment and key influencing factors related to Bitcoin trading. Evaluate the relevance and credibility of news articles based on reliable sources to support data-driven decision-making.  
 
