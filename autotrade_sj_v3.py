@@ -384,7 +384,7 @@ def get_instructions(file_path):
         logger.error("An error occurred while reading the file:", e)
 
 def analyze_data_with_gpt4(data_json, last_decisions, bitcoin_news, fear_and_greed, current_status, current_base64_image):
-    instructions_path = "instructions_sj_v2.md"
+    instructions_path = "instructions_sj_v3.md"
     try:
         instructions = get_instructions(instructions_path)
         if not instructions:
@@ -395,17 +395,18 @@ def analyze_data_with_gpt4(data_json, last_decisions, bitcoin_news, fear_and_gre
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": instructions},
-                {"role": "user", "content": data_json},
-                {"role": "user", "content": last_decisions},
-                {"role": "user", "content": bitcoin_news},
-                {"role": "user", "content": fear_and_greed},
-                {"role": "user", "content": current_status},
+                {"role": "user", "content": f"Market Analysis: {data_json}"},
+                {"role": "user", "content": f"Previous Decisions for Reflection: {last_decisions}"},
+                {"role": "user", "content": f"Cryptocurrency News: {bitcoin_news}"},
+                {"role": "user", "content": f"Fear and Greed Index: {fear_and_greed}"},
+                {"role": "user", "content": f"Current Investment State: {current_status}"},
                 {"role": "user", "content": [{
                         "type": "image_url",
                         "image_url": {
                             "url": f"data:image/png;base64,{current_base64_image}"
                         }
-                    }]}
+                    }]
+                }
             ],
             response_format={"type":"json_object"}
         )
