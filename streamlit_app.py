@@ -63,7 +63,7 @@ def main():
         page_icon="💰",
         layout="wide",  # 레이아웃 설정 ("centered" 또는 "wide")
     )
-    st.title('AI Bitcoin Trading Bot (SJ ver4.)')
+    st.title('AI Bitcoin Trading Bot (SJ ver5.)')
 
     # 데이터 로드
     df = load_data()
