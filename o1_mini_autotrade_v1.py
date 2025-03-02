@@ -383,17 +383,17 @@ def get_instructions(file_path):
     except Exception as e:
         logger.error("An error occurred while reading the file:", e)
 
-def analyze_data_with_gpt4(data_json, last_decisions, bitcoin_news, fear_and_greed, current_status, current_base64_image):
-    instructions_path = "o3_mini_instructions_v1.md"
+def analyze_data_with_o1mini(data_json, last_decisions, bitcoin_news, fear_and_greed, current_status, current_base64_image):
+    instructions_path = "o1_mini_instructions_v1.md"
     try:
         instructions = get_instructions(instructions_path)
         if not instructions:
             logger.info("No instructions found.")
             return None          
         response = client.chat.completions.create(
-            model="o3-mini",
-            reasoning_effort: "high",
-            store: true
+            model="o1-mini",
+            # reasoning_effort="high",
+            # store="true",
             messages=[
                 {"role": "system", "content": instructions},  # 역할 및 전략 설명
                 
@@ -406,7 +406,7 @@ def analyze_data_with_gpt4(data_json, last_decisions, bitcoin_news, fear_and_gre
                     - **Current Investment State**: {current_status}
                 """} # 시장 분석, 이전 결정, 암호화폐 뉴스, 공포와 탐욕 지수, 현재 투자 상태 입력
             ],
-            response_format={"type": "json_object"},
+            # response_format={"type": "json_object"},
         )
         advice = response.choices[0].message.content
         logger.info(f" ## AI Result: {advice}")
@@ -452,7 +452,7 @@ def make_decision_and_execute():
         bitcoin_news = fetch_bitcoin_news()
         fear_and_greed = fetch_fear_and_greed_index(limit=30)
         current_status = get_current_status()
-        current_base64_image = get_current_base64_image()
+        current_base64_image = "" # get_current_base64_image()
     except Exception as e:
         logger.error(f"Error: {e}")
     else:
@@ -461,7 +461,7 @@ def make_decision_and_execute():
         decision = None
         for attempt in range(max_retries):
             try:
-                advice = analyze_data_with_gpt4(data_json, last_decisions, bitcoin_news, fear_and_greed, current_status, current_base64_image)
+                advice = analyze_data_with_o1mini(data_json, last_decisions, bitcoin_news, fear_and_greed, current_status, current_base64_image)
                 decision = json.loads(advice)
                 break
             except Exception as e:
