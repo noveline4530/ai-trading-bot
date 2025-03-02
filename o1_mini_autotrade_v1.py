@@ -406,7 +406,7 @@ def analyze_data_with_o1mini(data_json, last_decisions, bitcoin_news, fear_and_g
                     - **Current Investment State**: {current_status}
                 """} # 시장 분석, 이전 결정, 암호화폐 뉴스, 공포와 탐욕 지수, 현재 투자 상태 입력
             ],
-            # response_format={"type": "json_object"},
+            response_format={"type": "json_object"},
         )
         advice = response.choices[0].message.content
         logger.info(f" ## AI Result: {advice}")

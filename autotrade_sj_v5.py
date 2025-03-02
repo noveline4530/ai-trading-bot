@@ -391,7 +391,7 @@ def analyze_data_with_gpt4(data_json, last_decisions, bitcoin_news, fear_and_gre
             logger.info("No instructions found.")
             return None          
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4.5-preview",
             messages=[
                 {"role": "system", "content": instructions},  # 역할 및 전략 설명
                 
